@@ -213,15 +213,16 @@ if AnaDef.ROIAnalysis==true % retrieve ROIs
         guidata(hObject, handles);
         return;
     end
-    try
-        fid = fopen(fullfile(AnaDef.ROINames));
-    catch
-        handles.InfoText = WriteInfoBox(handles,'File containing ROI names not found.',true);
-        guidata(hObject, handles);
-        return;
+    if  ~isfile(AnaDef.ROINames)
+       str = sprintf('File containing ROI names (AnaDef.ROINames=%s) not found! Bailing out ...\n',AnaDef.ROINames);
+       disp(str);
+       handles.InfoText = WriteInfoBox(handles,str,true);
+       guidata(hObject, handles);
+       return;
     end
-    scnames = textscan(fid,'%s');
-    thenames = char(scnames{1});
+    
+    scnames = importdata(AnaDef.ROINames);
+    thenames = char(scnames);
     if size(thenames,1)~=ROINum
         handles.InfoText = WriteInfoBox(handles,'Check number of ROIs in txt-file.',true);
         guidata(hObject, handles);
