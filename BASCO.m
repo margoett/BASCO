@@ -222,7 +222,7 @@ if AnaDef.ROIAnalysis==true % retrieve ROIs
     end
     scnames = textscan(fid,'%s');
     thenames = char(scnames{1});
-    if length(thenames)~=ROINum
+    if size(thenames,1)~=ROINum
         handles.InfoText = WriteInfoBox(handles,'Check number of ROIs in txt-file.',true);
         guidata(hObject, handles);
         return;
@@ -270,13 +270,20 @@ for isubj=1:NumSubj % loop over subjects  %%%%%%%%%%%%%%%%%%%%%
         % run directory
         rundir     = fullfile(data_path,AnaDef.Subj{isubj}.RunDirs{irun});
         fprintf('Directory run %d: %s \n',irun,rundir);
-        % read run specific onsets
+        % get onsets
         onsetfile  = fullfile(rundir,AnaDef.Subj{isubj}.Onsets{irun});
-        fprintf('Onsets: %s \n',onsetfile);
-        onsets     = dlmread(onsetfile); % read onsets
-        handles.anaobj{isubj}.Ana{1}.AnaDef.OnsetsMat{irun} = onsets;
-        % onsets
+        fprintf('Onsets: %s \n',onsetfile);      
+        onsets = dlmread(onsetfile); % read onsets
         onsets = onsets-AnaDef.OnsetModifier; % modify onsets (scans omitted)
+        % get durations
+        if AnaDef.Subj{isubj}.DurationsFromFile == true
+            durationfile = fullfile(rundir,AnaDef.Subj{isubj}.DurationFiles{irun});
+            durations    = dlmread(durationfile); % read durations
+        end
+        handles.anaobj{isubj}.Ana{1}.AnaDef.OnsetsMat{irun} = onsets;
+
+        %%% to do: check number of onsets/durations. Files exist?
+        
         %
         % model specification
         %
@@ -306,7 +313,12 @@ for isubj=1:NumSubj % loop over subjects  %%%%%%%%%%%%%%%%%%%%%
                 counter=counter+1;
                 matlabbatch{2}.spm.stats.fmri_spec.sess(irun).cond(counter).name     = sprintf('%s%d',AnaDef.Cond{icond},ionsets);
                 matlabbatch{2}.spm.stats.fmri_spec.sess(irun).cond(counter).onset    = trialonset;
-                matlabbatch{2}.spm.stats.fmri_spec.sess(irun).cond(counter).duration = AnaDef.Subj{isubj}.Duration(icond);
+                if AnaDef.Subj{isubj}.DurationsFromFile == true
+                    trialduration = durations(icond,ionsets);
+                    matlabbatch{2}.spm.stats.fmri_spec.sess(irun).cond(counter).duration = trialduration;
+                else
+                    matlabbatch{2}.spm.stats.fmri_spec.sess(irun).cond(counter).duration = AnaDef.Subj{isubj}.Duration(icond);
+                end
                 matlabbatch{2}.spm.stats.fmri_spec.sess(irun).cond(counter).tmod     = 0;
                 matlabbatch{2}.spm.stats.fmri_spec.sess(irun).cond(counter).pmod     = struct('name', {}, 'param', {}, 'poly', {});
                 % store information on regressors and the corresponding condition
@@ -416,6 +428,8 @@ for isubj=1:NumSubj % loop over subjects  %%%%%%%%%%%%%%%%%%%%%
             str=sprintf('Retrieving design for subject %d from SPM file: %s',isubj,SPMfile);
             handles.InfoText = WriteInfoBox(handles,str,true);
             D = mardo(SPMfile); % Marsbar design object
+            % Set fmristat AR modelling
+            D = autocorr(D, 'fmristat', 2); % MG 20.04.2016
             R = maroi(ROIFile{iROI}); % Marsbar ROI object
             str=sprintf('Retrieving data from ROI %d using summary function %s ...',iROI,AnaDef.ROISummaryFunction);
             handles.InfoText = WriteInfoBox(handles,str,true);
@@ -857,6 +871,11 @@ for isubj=1:NumSubj % loop over subjects
     if isempty(BETAFILES)
        BETAFILES = spm_select('FPList',beta_path, '^beta*.*\.nii');
     end
+    if isempty(BETAFILES)
+        str = sprintf('Data not found! Check path: %s. Aborting.',beta_path);
+        handles.InfoText = WriteInfoBox(handles,str,true);
+        return;
+    end
     fprintf('Number of beta-files (regressors): %d\n',size(BETAFILES,1));
     % get voxel timeseries within mask
     clear('y','vXYZ');
@@ -882,13 +901,13 @@ for isubj=1:NumSubj % loop over subjects
     tsmat  = repmat(An(:,1),1,NumVox+1);
     C      = sum(tsmat.*An,1);
     fcvec  = C(2:NumVox+1);
-    fcvec  = atanh(fcvec);
+    %%% no! fcvec  = atanh(fcvec);
     % save correlation map to file
     outvol   = spm_vol(BETAFILES(1,:));
     corrmap  = zeros(outvol.dim(1),outvol.dim(2),outvol.dim(3));
     zcorrmap = zeros(outvol.dim(1),outvol.dim(2),outvol.dim(3));
-    themean  = mean(fcvec(~isnan(fcvec)));
-    thestd   = std(fcvec(~isnan(fcvec)));
+    %%%themean  = mean(fcvec(~isnan(fcvec)));
+    %%thestd   = std(fcvec(~isnan(fcvec)));
     for ivox=1:NumVox % loop over voxels
         corrmap(vXYZ(1,ivox),vXYZ(2,ivox),vXYZ(3,ivox))  = fcvec(ivox);
         zcorrmap(vXYZ(1,ivox),vXYZ(2,ivox),vXYZ(3,ivox)) = atanh(fcvec(ivox)); % Fisher-z transformation of correlation coefficients
@@ -1011,7 +1030,7 @@ if thetest==2
     NumSubj1  = length(anaobj);
     thefiles1 = cell(1,NumSubj1);
     cd(fullfile(anaobj{1}.Ana{1}.AnaDef.DataPath,anaobj{1}.Ana{1}.AnaDef.OutDir));
-    [fname,path] = uigetfile({'*.img';'*.nii'},'Select correlation/degree map','MultiSelect','off');
+    [fname,path] = uigetfile({'*.nii';'*.img'},'Select correlation/degree map','MultiSelect','off');
     for isubj=1:NumSubj1 % loop over subjects
         data_path  = anaobj{isubj}.Ana{1}.AnaDef.DataPath;
         outdirname = anaobj{isubj}.Ana{1}.AnaDef.OutDir;
@@ -1025,21 +1044,29 @@ if thetest==2
         outdirname = anaobj{isubj}.Ana{1}.AnaDef.OutDir;
         thefiles2{isubj} = fullfile(data_path,outdirname,fname);
     end % end loop over subjects
-    cd(thedir);
+    cd(thedir);  
+    
     matlabbatch{1}.spm.stats.factorial_design.dir = {thedir};
-    matlabbatch{1}.spm.stats.factorial_design.des.t2.scans1 = cellstr(thefiles1);
-    matlabbatch{1}.spm.stats.factorial_design.des.t2.scans2 = cellstr(thefiles2);
+    matlabbatch{1}.spm.stats.factorial_design.des.t2.scans1 = cellstr(thefiles1');
+    matlabbatch{1}.spm.stats.factorial_design.des.t2.scans2 = cellstr(thefiles2');
     matlabbatch{1}.spm.stats.factorial_design.des.t2.dept = 0;
-    matlabbatch{1}.spm.stats.factorial_design.des.t2.variance = 0;
+    matlabbatch{1}.spm.stats.factorial_design.des.t2.variance = 1;
     matlabbatch{1}.spm.stats.factorial_design.des.t2.gmsca = 0;
     matlabbatch{1}.spm.stats.factorial_design.des.t2.ancova = 0;
     matlabbatch{1}.spm.stats.factorial_design.cov = struct('c', {}, 'cname', {}, 'iCFI', {}, 'iCC', {});
+    matlabbatch{1}.spm.stats.factorial_design.multi_cov = struct('files', {}, 'iCFI', {}, 'iCC', {});
     matlabbatch{1}.spm.stats.factorial_design.masking.tm.tm_none = 1;
     matlabbatch{1}.spm.stats.factorial_design.masking.im = 1;
     matlabbatch{1}.spm.stats.factorial_design.masking.em = {''};
     matlabbatch{1}.spm.stats.factorial_design.globalc.g_omit = 1;
     matlabbatch{1}.spm.stats.factorial_design.globalm.gmsca.gmsca_no = 1;
     matlabbatch{1}.spm.stats.factorial_design.globalm.glonorm = 1;
+   
+    
+    disp('debug:  ')
+    thedir
+    cellstr(thefiles1)
+    cellstr(thefiles2)
 end
 
 %
@@ -1154,10 +1181,15 @@ voxelbs_cond = CondSelBS(handles.anaobj{isubj},thecond,bs);
 function [seedroimeanbs_selcond] = MeanROIBetaSeries(handles,isubj,ROIfile,thecond)
 % mean ROI beta-series
 % create list of files which contain the beta-values
-beta_path = fullfile(handles.anaobj{isubj}.Ana{1}.AnaDef.DataPath,handles.anaobj{isubj}.Ana{1}.AnaDef.OutDir)
+beta_path = fullfile(handles.anaobj{isubj}.Ana{1}.AnaDef.DataPath,handles.anaobj{isubj}.Ana{1}.AnaDef.OutDir);
 DATA = spm_select('FPList',beta_path,'^beta*.*\.img');
 if isempty(DATA)
   DATA = spm_select('FPList',beta_path,'^beta*.*\.nii');
+end
+if isempty(DATA)
+   str=sprintf('Data not found! Check path: %s. Aborting.',beta_path); 
+   handles.InfoText = WriteInfoBox(handles,str,true);
+   return;
 end
 % retrieve beta values
 handles.InfoText = WriteInfoBox(handles,'Retrieving beta-values for voxels in selected ROI.',true);

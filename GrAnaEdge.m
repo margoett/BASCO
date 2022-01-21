@@ -237,12 +237,12 @@ for i=1:handles.NumEdges
          strn2 = strtrim(handles.Names{handles.indexNode2(i)});
          n1max = length(strn1);
          n2max = length(strn2);
-         if n1max>20
-             n1max=20;
-         end
-         if n2max>20
-             n2max=20;
-         end        
+%          if n1max>20
+%              n1max=20;
+%          end
+%          if n2max>20
+%              n2max=20;
+%          end        
          Edgenames(counter)   = cellstr(sprintf('%s <-> %s',strn1(1:n1max),strn2(1:n2max)));
          if StatTest==3
            tableData(counter,1) = handles.Prob(i);
@@ -499,7 +499,7 @@ end
 
 compos     = handles.ana{1}{1}.Ana{1}.Configure.ROI.ROICOM;
 shortlabel = handles.ana{1}{1}.Ana{1}.Configure.ROI.ROIShortLabel;
-disp('Creating connectivity matrix (.node and .edge files) ...');
+disp('Creating connectivity matrix ...');
 rownames      = get(handles.tableedges,'RowName');
 columnnames   = get(handles.tableedges,'ColumnName');
 thedata       = get(handles.tableedges,'data');
@@ -508,7 +508,7 @@ numrows       = length(rownames);
 for irow=1:numrows
     htemp{irow} = textscan(rownames{irow},'%s <-> %s');
     idx1(irow)  = find(strcmp(handles.Names,char(htemp{irow}{1}))==1);
-    idx2(irow)  = find(strcmp(handles.Names,char(htemp{irow}{2}))==1);
+    idx2(irow)  = find(strcmp(handles.Names,char(htemp{irow}{2}))==1);  
 end
 idx = unique([idx1 idx2]);
 numnodes = length(idx);
@@ -518,14 +518,14 @@ end
 fprintf('Number of nodes: %d \n',numnodes);
 nwmatrix = zeros(numnodes,numnodes);
 for irow=1:numrows
-    fprintf('%d <-> %d : weight=%f \n',find(idx==idx1(irow)),find(idx==idx2(irow)),w);
+    fprintf('%d <-> %d \n',find(idx==idx1(irow)),find(idx==idx2(irow)));
     nwmatrix(find(idx==idx1(irow)),find(idx==idx2(irow)))=1;
     nwmatrix(find(idx==idx2(irow)),find(idx==idx1(irow)))=1;
 end
+disp('Write .node and .edge files for BrainNetViewer ...');
 basco_CreateNodeEdgeFiles(idx,compos,shortlabel,nwmatrix);
-disp('Plotting NW ...')
-fastBrainNetPlot(idx,compos,nwmatrix,shortlabel);
-disp('... done.')
+disp('... done.');
+
 
 function pushbuttonviewrois_Callback(hObject, eventdata, handles)
 % display marsbar ROIs
