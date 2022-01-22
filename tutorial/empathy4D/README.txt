@@ -1,8 +1,9 @@
-Please download BASCO tuorial data from the NITRC BASCO page or contact
+Please download the BASCO tuorial data from the NITRC BASCO project page:
 
-martin.goettlich@neuro.uni-luebeck.de
+https://www.nitrc.org/projects/basco/
 
+Put the zip-file into your BASCO folder and unzip the file under Matlab.
 
+Check path definitions in 'anadef.m'. Follow the instructions in the BASCO user manual.
 
-
-Check path definitions in 'anadef.m'.
+Questions? Contact: martin.goettlich@neuro.uni-luebeck.de
