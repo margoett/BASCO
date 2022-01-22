@@ -6,11 +6,11 @@ AnaDef.NumCond              = 5;         % number of conditions
 AnaDef.Cond                 = { 'EMOT-TWO' , 'NEUT-TWO' , 'EMOT-ONE' , 'NEUT-ONE' , 'OBJ' }; % names of conditions
 AnaDef.units                = 'scans';    % unit 'scans' or 'secs'
 AnaDef.RT                   = 2;          % repetition time in seconds
-AnaDef.fmri_t               = 16;
-AnaDef.fmri_t0              = 9;
+AnaDef.fmri_t               = 16; % micro time resolution (see SPM manual: level 1 analysis)
+AnaDef.fmri_t0              = 9; % micro time onset (see SPM manual: level 1 analysis)
 AnaDef.OutDir               = 'betaseries';  % output directory
 AnaDef.Prefix               = 'f4D';
-AnaDef.OnsetModifier        = 0; % subtract this number from the onset-matrix (unit: scans)
+AnaDef.OnsetModifier        = 0; % Subtract this number from the onset-matrix (unit: scans). Should be zero is most cases! Use this only if onsets do not match the scans (missing volumes in data).
 
 AnaDef.VoxelAnalysis        = true;  
 AnaDef.ROIAnalysis          = true; % ROI level analysis (estimate model on ROIs for network analysis)
@@ -23,7 +23,7 @@ AnaDef.HRFDERIVS            = [0 0];  % temporal and disperion derivatives: [0 0
 
 % regressors to include into design
 AnaDef.MotionReg            = true;
-AnaDef.GlobalMeanReg        = false;
+AnaDef.GlobalMeanReg        = false; % Should be 'false' in most cases. Allows you to regress out use the global mean signal.
 
 % name of output-file (analysis objects)
 AnaDef.Outfile              = fullfile(basco_path,'tutorial','empathy4D','out_estimated.mat');
